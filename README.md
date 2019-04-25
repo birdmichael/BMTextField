@@ -9,9 +9,28 @@
 
 To run the example project, clone the repo, and run `pod install` from the Example directory first.
 
-## Requirements
+## 截图
 
-## Installation
+![](1.gif)
+
+## 说明
+
+```
+[textField2 setVerifyText:^BOOL(NSString * _Nonnull text, UILabel * _Nonnull errorLabel) {
+        errorLabel.text = @"密码必须大于10位";
+        if (text.length >10) {
+            return YES;
+        }else{
+            return NO;
+        }
+    }];
+```
+
+验证可自定义`errorLabel`, 但内部处理好隐藏显示
+
+
+
+## 安装
 
 BMTextField is available through [CocoaPods](https://cocoapods.org). To install
 it, simply add the following line to your Podfile:
@@ -19,6 +38,8 @@ it, simply add the following line to your Podfile:
 ```ruby
 pod 'BMTextField'
 ```
+
+
 
 ## Author
 
