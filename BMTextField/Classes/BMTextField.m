@@ -152,7 +152,13 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 }
 
 - (void)addErrorAnimation {
-    self.animationLineView.backgroundColor = [UIColor redColor];
+    if (self.style == BMTextFieldStyleLine) {
+        self.animationLineView.backgroundColor = [UIColor redColor];
+    } else if (self.style == BMTextFieldStyleCircleBorder) {
+        [self.circleBorderLayer.sublayers enumerateObjectsUsingBlock:^(__kindof CALayer * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+            [(CAShapeLayer *)obj setStrokeColor:[UIColor redColor].CGColor];
+        }];
+    }
     self.errorLabel.hidden = NO;
     [self.errorLabel sizeToFit];
     CGRect frame = self.animationLineView.frame;
@@ -160,8 +166,8 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
     self.animationLineView.frame = frame;
     CALayer *viewLayer = self.animationLineView.layer;
     CGPoint position = viewLayer.position;
-    CGPoint x = CGPointMake(position.x + 10, position.y);
-    CGPoint y = CGPointMake(position.x - 10, position.y);
+    CGPoint x = CGPointMake(position.x , position.y);
+    CGPoint y = CGPointMake(position.x , position.y);
     CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"position"];
     [animation setTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionDefault]];
     [animation setFromValue:[NSValue valueWithCGPoint:x]];
@@ -233,6 +239,7 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 - (void)addNotification {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bm_textFieldDidBeginEditing:) name:UITextFieldTextDidBeginEditingNotification object:self];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bm_textFieldDidEndEditing:) name:UITextFieldTextDidEndEditingNotification object:self];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bm_textFieldChangedEditing:) name:UITextFieldTextDidChangeNotification object:self];
 }
 
 - (void)bm_textFieldDidBeginEditing:(NSNotification *)notification {
@@ -261,7 +268,7 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
         [self removePlaceholderAnimation];
     }
     
-    if (self.verifyText && !self.verifyText(self.text,self.errorLabel)) {
+    if (!self.verifyText || !self.verifyText(self.text,self.errorLabel)) {
         [self addErrorAnimation];
     } else {
         self.errorLabel.hidden = YES;
@@ -269,6 +276,23 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
             [self removeAnimationLineViewAnimation];
         } else if (self.style == BMTextFieldStyleCircleBorder) {
             [self removeCircleBorderAnimation];
+        }
+    }
+    
+}
+
+- (void)bm_textFieldChangedEditing:(NSNotification *)notification {
+    // 输入过程修改errorLabel
+    if (!self.errorLabel.hidden) {
+        if (self.verifyText && self.verifyText(self.text,self.errorLabel)) {
+            self.errorLabel.hidden = YES;
+            if (self.style == BMTextFieldStyleLine) {
+                self.animationLineView.backgroundColor = self.lineSelectedColor;
+            } else if (self.style == BMTextFieldStyleCircleBorder) {
+                [self.circleBorderLayer.sublayers enumerateObjectsUsingBlock:^(__kindof CALayer * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                    [(CAShapeLayer *)obj setStrokeColor:self.lineSelectedColor.CGColor];
+                }];
+            }
         }
     }
 }
