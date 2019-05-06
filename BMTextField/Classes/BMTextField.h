@@ -10,6 +10,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSUInteger, BMTextFieldStyle) {
+    BMTextFieldStyleLine,
+    BMTextFieldStyleCircleBorder,
+};
+
 @interface BMTextField : UITextField
 /** 验证输入文字合法性。 */
 typedef BOOL (^verifyTextBlock)(NSString *text , UILabel *errorLabel);
@@ -19,7 +24,10 @@ typedef BOOL (^verifyTextBlock)(NSString *text , UILabel *errorLabel);
 @property (nonatomic, assign) CGFloat scale;
 /** title 偏移。默认 CGPointMake(0, 20) X为右，Y为上，负值反之 */
 @property (nonatomic, assign) CGPoint titlePoint;
+/** errorLabel 偏移。默认 CGPointMake(0, 1) X为右，Y为上，负值反之 */
+@property (nonatomic, assign) CGPoint errorLabelPoint;
 @property (nonatomic, copy) verifyTextBlock verifyText;
+@property (nonatomic, assign) BMTextFieldStyle style;
 
 @end
 

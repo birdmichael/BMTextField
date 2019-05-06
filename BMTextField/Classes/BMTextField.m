@@ -21,6 +21,10 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 @property (nonatomic, strong) NSAttributedString *cachedPlaceholder;
 @property (nonatomic, strong) UILabel *placeholderCacheLabel;
 @property (nonatomic, strong) UILabel *errorLabel;
+
+@property (nonatomic, strong) CADisplayLink *displayLink;
+@property (nonatomic, strong) CAShapeLayer *leftLayer;
+@property (nonatomic, assign) CGFloat ds;
 @end
 
 @implementation BMTextField
@@ -64,8 +68,8 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
     self.lineView.frame = CGRectMake(0, self.frame.size.height - 1, self.frame.size.width, 1);
     self.animationLineView.frame = CGRectMake(0, self.frame.size.height - 1, 0, 1);
     self.placeholderCacheLabel.frame = CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height);
-    self.errorLabel.frame = CGRectMake(0, self.frame.size.height+2, 0, 0);
     [self.errorLabel sizeToFit];
+    self.errorLabel.frame = CGRectMake(self.errorLabelPoint.x, self.frame.size.height - self.errorLabel.frame.size.height - self.errorLabelPoint.y, self.errorLabel.frame.size.width,self.errorLabel.frame.size.height);
 }
 
 - (void)addAnimationLineViewAnimation {
@@ -178,6 +182,34 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
     [viewLayer addAnimation:animation forKey:nil];
 }
 
+// 动画绘制相关
+- (void)starDrawCircleBorder {
+    if (self.displayLink) {
+        [self.displayLink invalidate];
+        self.displayLink = nil;
+    }
+    // 启动同步渲染绘制波纹
+    self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(setCircleBorder:)];
+    [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    
+    CAShapeLayer *leftLayer = [CAShapeLayer layer];
+    self.leftLayer = leftLayer;
+    self.ds = 0;
+    [self.animationLineView.layer addSublayer:leftLayer];
+}
+
+- (void)setCircleBorder:(CADisplayLink *)displayLink {
+    self.ds += 0.1;
+    UIColor *color = [UIColor redColor];
+    [color set];
+    UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:self.animationLineView.frame.origin radius:self.ds startAngle:0 endAngle:3.1415926 *3/2 clockwise:YES];
+    path.lineWidth = 2;
+    path.lineCapStyle = kCGLineCapRound;
+    path.lineJoinStyle = kCGLineJoinRound;
+    [path stroke];
+    self.leftLayer.path = path.CGPath;
+}
+
 #pragma mark - NSNotification And Methods
 - (void)addNotification {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bm_textFieldDidBeginEditing:) name:UITextFieldTextDidBeginEditingNotification object:self];
@@ -186,6 +218,7 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 
 - (void)bm_textFieldDidBeginEditing:(NSNotification *)notification {
     [self addAnimationLineViewAnimation];
+    
     if (!self.text || [self.text isEqualToString:@""]) {
         [self addPlaceholderAnimation];
     }
@@ -218,6 +251,8 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
         self.animationLineView.alpha = 1;
         self.lineView.alpha = 0;
         [self.animationLineView.layer removeAllAnimations];
+    } else if ([self.animationLineView.layer animationForKey:kBMAnimationLineViewAnimationWidth]){
+        [self starDrawCircleBorder];
     }
 }
 
