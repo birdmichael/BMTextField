@@ -5,10 +5,6 @@
 [![License](https://img.shields.io/cocoapods/l/BMTextField.svg?style=flat)](https://cocoapods.org/pods/BMTextField)
 [![Platform](https://img.shields.io/cocoapods/p/BMTextField.svg?style=flat)](https://cocoapods.org/pods/BMTextField)
 
-## Example
-
-To run the example project, clone the repo, and run `pod install` from the Example directory first.
-
 ## 截图
 
 ![](1.gif)
