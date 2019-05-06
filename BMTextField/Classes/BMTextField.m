@@ -22,9 +22,7 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 @property (nonatomic, strong) UILabel *placeholderCacheLabel;
 @property (nonatomic, strong) UILabel *errorLabel;
 
-@property (nonatomic, strong) CADisplayLink *displayLink;
-@property (nonatomic, strong) CAShapeLayer *leftLayer;
-@property (nonatomic, assign) CGFloat ds;
+@property (nonatomic, strong) CALayer *circleBorderLayer;
 @end
 
 @implementation BMTextField
@@ -73,9 +71,6 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 }
 
 - (void)addAnimationLineViewAnimation {
-    if (!self.errorLabel.hidden) {
-        return;
-    }
     self.animationLineView.backgroundColor = self.lineSelectedColor;
     CAKeyframeAnimation *kfAnimationLine = [CAKeyframeAnimation animationWithKeyPath:@"bounds.size.width"];
     kfAnimationLine.fillMode = kCAFillModeForwards;
@@ -101,15 +96,10 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
     kfAnimation2.duration = 0.25f;
     kfAnimation2.delegate = self;
     [self.lineView.layer addAnimation:kfAnimation2 forKey:kBMLineViewAnimationOpacity];
+    
 }
 
 - (void)addPlaceholderAnimation {
-    if (!_cachedPlaceholder) {
-        [self addSubview:self.placeholderCacheLabel];
-        self.placeholderCacheLabel.attributedText = self.attributedPlaceholder;
-        
-        self.cachedPlaceholder = self.attributedPlaceholder;
-    }
     self.placeholder = nil;
     _placeholderCacheLabel.hidden = NO;
     CAKeyframeAnimation *kfAnimation1 = [CAKeyframeAnimation animationWithKeyPath:@"transform"];
@@ -180,35 +170,64 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
     [animation setDuration:.06];
     [animation setRepeatCount:3];
     [viewLayer addAnimation:animation forKey:nil];
+    
 }
 
 // 动画绘制相关
+
+#define DEGREES_TO_RADIANS(angle) ((angle) / 180.0 * M_PI)
 - (void)starDrawCircleBorder {
-    if (self.displayLink) {
-        [self.displayLink invalidate];
-        self.displayLink = nil;
-    }
-    // 启动同步渲染绘制波纹
-    self.displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(setCircleBorder:)];
-    [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
+    CALayer *circleBorderLayer = [[CALayer alloc] initWithLayer:self.layer];
+    self.circleBorderLayer = circleBorderLayer;
+    [self.layer addSublayer:circleBorderLayer];
     
     CAShapeLayer *leftLayer = [CAShapeLayer layer];
-    self.leftLayer = leftLayer;
-    self.ds = 0;
-    [self.animationLineView.layer addSublayer:leftLayer];
+    leftLayer.fillColor = [UIColor clearColor].CGColor;
+    leftLayer.strokeColor = self.lineSelectedColor.CGColor;
+    leftLayer.lineWidth = self.animationLineView.frame.size.height;
+    [circleBorderLayer addSublayer:leftLayer];
+    CGPoint arc = CGPointMake(self.animationLineView.frame.origin.x, self.animationLineView.frame.origin.y/2.0);
+    UIBezierPath *leftPath = [UIBezierPath bezierPath];
+    [leftPath moveToPoint:CGPointMake(0, self.frame.size.height)];
+    [leftPath addArcWithCenter:arc radius:self.frame.size.height/2.0 startAngle:DEGREES_TO_RADIANS(90) endAngle:DEGREES_TO_RADIANS(270) clockwise:YES];
+    leftLayer.path = leftPath.CGPath;
+    
+    CABasicAnimation *leftLayerAnimat = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
+    leftLayerAnimat.duration = 0.3;
+    leftLayerAnimat.fromValue = @0;
+    leftLayerAnimat.toValue = @1;
+    leftLayerAnimat.timingFunction=[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    leftLayerAnimat.removedOnCompletion=NO;
+    leftLayerAnimat.fillMode=kCAFillModeForwards;
+    [leftLayer addAnimation:leftLayerAnimat forKey:@"path"];
+    
+    CAShapeLayer *rightLayer = [CAShapeLayer layer];
+    rightLayer.fillColor = [UIColor clearColor].CGColor;
+    rightLayer.strokeColor = self.lineSelectedColor.CGColor;
+    rightLayer.lineWidth = self.animationLineView.frame.size.height;
+    [circleBorderLayer addSublayer:rightLayer];
+    CGPoint rightArc = CGPointMake(self.frame.size.width, self.animationLineView.frame.origin.y/2.0);
+    UIBezierPath *rigthPath = [UIBezierPath bezierPath];
+    [rigthPath moveToPoint:CGPointMake(0, self.frame.size.height)];
+    [rigthPath addLineToPoint:CGPointMake(self.frame.size.width, self.frame.size.height)];
+    [rigthPath addArcWithCenter:rightArc radius:self.frame.size.height/2.0  startAngle:DEGREES_TO_RADIANS(90) endAngle:DEGREES_TO_RADIANS(270) clockwise:NO];
+    [self.placeholderCacheLabel sizeToFit];
+    
+    [rigthPath addLineToPoint:CGPointMake(self.placeholderCacheLabel.bounds.size.width *self.scale, 0)];
+    rightLayer.path = rigthPath.CGPath;
+    [rightLayer addAnimation:leftLayerAnimat forKey:@"path"];
 }
 
-- (void)setCircleBorder:(CADisplayLink *)displayLink {
-    self.ds += 0.1;
-    UIColor *color = [UIColor redColor];
-    [color set];
-    UIBezierPath *path = [UIBezierPath bezierPathWithArcCenter:self.animationLineView.frame.origin radius:self.ds startAngle:0 endAngle:3.1415926 *3/2 clockwise:YES];
-    path.lineWidth = 2;
-    path.lineCapStyle = kCGLineCapRound;
-    path.lineJoinStyle = kCGLineJoinRound;
-    [path stroke];
-    self.leftLayer.path = path.CGPath;
+- (void)removeCircleBorderAnimation {
+    CAKeyframeAnimation *kfAnimation2 = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    kfAnimation2.fillMode = kCAFillModeForwards;
+    kfAnimation2.removedOnCompletion = NO;
+    kfAnimation2.values = @[@1,@0];
+    kfAnimation2.duration = 0.25f;
+    kfAnimation2.delegate = self;
+    [self.circleBorderLayer addAnimation:kfAnimation2 forKey:kBMLineViewAnimationOpacity];
 }
+
 
 #pragma mark - NSNotification And Methods
 - (void)addNotification {
@@ -217,7 +236,19 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 }
 
 - (void)bm_textFieldDidBeginEditing:(NSNotification *)notification {
-    [self addAnimationLineViewAnimation];
+    if (!_cachedPlaceholder) {
+        [self addSubview:self.placeholderCacheLabel];
+        self.placeholderCacheLabel.attributedText = self.attributedPlaceholder;
+        self.cachedPlaceholder = self.attributedPlaceholder;
+    }
+    
+    if (self.errorLabel.hidden) {
+        if (self.style == BMTextFieldStyleLine) {
+            [self addAnimationLineViewAnimation];
+        } else if (self.style == BMTextFieldStyleCircleBorder) {
+            [self starDrawCircleBorder];
+        }
+    }
     
     if (!self.text || [self.text isEqualToString:@""]) {
         [self addPlaceholderAnimation];
@@ -225,22 +256,26 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 }
 
 - (void)bm_textFieldDidEndEditing:(NSNotification *)notification {
+    // Restore settings about Placeholder
     if (!self.text || [self.text isEqualToString:@""]) {
         [self removePlaceholderAnimation];
     }
+    
     if (self.verifyText && !self.verifyText(self.text,self.errorLabel)) {
         [self addErrorAnimation];
     } else {
         self.errorLabel.hidden = YES;
-        [self removeAnimationLineViewAnimation];
+        if (self.style == BMTextFieldStyleLine) {
+            [self removeAnimationLineViewAnimation];
+        } else if (self.style == BMTextFieldStyleCircleBorder) {
+            [self removeCircleBorderAnimation];
+        }
     }
 }
 
 #pragma mark - CAAnimationDelegate
 - (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag {
-    if (!flag) {
-        return;
-    }
+    
     if (anim == [self.placeholderCacheLabel.layer animationForKey:kBMPlaceholderCacheLabelAnimationOut]) {
         _placeholderCacheLabel.hidden = YES;
         self.attributedPlaceholder = self.cachedPlaceholder;
@@ -251,8 +286,6 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
         self.animationLineView.alpha = 1;
         self.lineView.alpha = 0;
         [self.animationLineView.layer removeAllAnimations];
-    } else if ([self.animationLineView.layer animationForKey:kBMAnimationLineViewAnimationWidth]){
-        [self starDrawCircleBorder];
     }
 }
 
