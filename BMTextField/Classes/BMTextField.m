@@ -268,7 +268,7 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
         [self removePlaceholderAnimation];
     }
     
-    if (!self.verifyText || !self.verifyText(self.text,self.errorLabel)) {
+    if (self.verifyText && !self.verifyText(self.text,self.errorLabel)) {
         [self addErrorAnimation];
     } else {
         self.errorLabel.hidden = YES;
