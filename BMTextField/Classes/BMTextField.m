@@ -267,7 +267,7 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
     if (!self.text || [self.text isEqualToString:@""]) {
         [self removePlaceholderAnimation];
     }
-    
+    // 有验证并且没有通过
     if (self.verifyText && !self.verifyText(self.text,self.errorLabel)) {
         [self addErrorAnimation];
     } else {
@@ -284,7 +284,8 @@ static NSString * const kBMPlaceholderCacheLabelAnimationOut = @"kBMPlaceholderC
 - (void)bm_textFieldChangedEditing:(NSNotification *)notification {
     // 输入过程修改errorLabel
     if (!self.errorLabel.hidden) {
-        if (self.verifyText && self.verifyText(self.text,self.errorLabel)) {
+        // 没有验证或者通过
+        if (!self.verifyText || self.verifyText(self.text,self.errorLabel)) {
             self.errorLabel.hidden = YES;
             if (self.style == BMTextFieldStyleLine) {
                 self.animationLineView.backgroundColor = self.lineSelectedColor;
